@@ -28,16 +28,7 @@ var m = map[string]struct {
 	unmarshal func([]byte) (interface{}, error)
 }{
 	"json": {
-		marshal: func(v interface{}) ([]byte, error) {
-			var buf bytes.Buffer
-			enc := json.NewEncoder(&buf)
-			enc.SetEscapeHTML(false)
-			enc.SetIndent("", "\t")
-			if err := enc.Encode(v); err != nil {
-				return nil, err
-			}
-			return buf.Bytes(), nil
-		},
+		marshal: jsonMarshal,
 		unmarshal: func(p []byte) (v interface{}, _ error) {
 			if err := json.Unmarshal(p, &v); err != nil {
 				return nil, err
@@ -56,7 +47,7 @@ var m = map[string]struct {
 	},
 	"hcl": {
 		marshal: func(v interface{}) ([]byte, error) {
-			p, err := json.Marshal(v)
+			p, err := jsonMarshal(v)
 			if err != nil {
 				return nil, err
 			}
@@ -186,6 +177,17 @@ func (f *Format) write(p []byte, file string) error {
 	default:
 		return ioutil.WriteFile(file, p, 0644)
 	}
+}
+
+func jsonMarshal(v interface{}) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "\t")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func Refmt(in, out string) error { return f.Refmt(in, out) }

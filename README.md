@@ -67,7 +67,7 @@ provider "aws" {
 
 resource "aws_instance" "aws-instance" {
   instance_type = "t2.nano"
-  user_data = "echo \"hello world!\" \u003e\u003e /tmp/helloworld.txt"
+  user_data = "echo \"hello world!\" >> /tmp/helloworld.txt"
 }
 ```
 
