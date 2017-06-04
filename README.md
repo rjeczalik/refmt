@@ -29,6 +29,8 @@ passed with -f flag.
 
 ```
 $ refmt -t yaml main.yaml -
+```
+```yaml
 provider:
   aws:
     access_key: ${var.aws_access_key}
@@ -41,6 +43,8 @@ resource:
 ```
 ```
 $ refmt main.yaml main.json
+```
+```json
 {
         "provider": {
                 "aws": {
@@ -58,8 +62,10 @@ $ refmt main.yaml main.json
         }
 }
 ```
-```
+```hcl
 $ refmt main.json main.hcl
+```
+```
 provider "aws" {
   access_key = "${var.aws_access_key}"
   secret_key = "${var.aws_secret_key}"
