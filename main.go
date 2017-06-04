@@ -10,7 +10,7 @@ const usage = `usage: refmt [-f format] INPUT_FILE|"-" OUTPUT_FILE|"-"
 
 Converts from one encoding to another. Supported formats (and their file extensions):
 
-	- HCL (.hcl)
+	- HCL (.hcl or .tf)
 	- JSON (.json)
 	- YAML (.yaml or .yml)
 

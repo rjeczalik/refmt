@@ -79,6 +79,8 @@ func typ(file string) string {
 	switch ext = strings.ToLower(ext); ext {
 	case "yml":
 		return "yaml"
+	case "tf":
+		return "hcl"
 	case "json", "yaml", "hcl":
 		return ext
 	default:
