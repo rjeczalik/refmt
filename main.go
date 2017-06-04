@@ -20,8 +20,6 @@ refmt will try to guess input format.
 If OUTPUT_FILE is "-" (stdout), destination format is required to be
 passed with -f flag.`
 
-var format = flag.String("f", "", "Output format type.")
-
 func die(v ...interface{}) {
 	fmt.Fprintln(os.Stderr, v...)
 	os.Exit(1)
