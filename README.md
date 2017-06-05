@@ -10,7 +10,7 @@ $ go get github.com/rjeczalik/refmt
 ### usage
 
 ```
-usage: refmt [-f format] INPUT_FILE|"-" OUTPUT_FILE|"-"
+usage: refmt [-t type] INPUT_FILE|"-" OUTPUT_FILE|"-"
 
 Converts from one encoding to another. Supported formats (and their file extensions):
 
@@ -21,8 +21,8 @@ Converts from one encoding to another. Supported formats (and their file extensi
 If INPUT_FILE extension is not recognized or INPUT_FILE is "-" (stdin),
 refmt will try to guess input format.
 
-If OUTPUT_FILE is "-" (stdout), destination format is required to be
-passed with -f flag.
+If OUTPUT_FILE is "-" (stdout), destination format type is required to be
+passed with -t flag.
 ```
 
 ### examples
