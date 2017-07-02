@@ -12,10 +12,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rjeczalik/refmt/object"
-
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/printer"
+	"github.com/koding/koding/go/src/koding/kites/kloud/utils/object"
 	yaml "gopkg.in/yaml.v1"
 )
 
@@ -105,6 +104,22 @@ func (f *Format) Refmt(in, out string) error {
 	return f.marshal(v, out)
 }
 
+func (f *Format) Merge(orig, mixin, out string) error {
+	vorig, err := f.unmarshal(orig)
+	if err != nil {
+		return err
+	}
+	vmixin, err := f.unmarshal(mixin)
+	if err != nil {
+		return err
+	}
+	v, err := merge(vorig, vmixin)
+	if err != nil {
+		return err
+	}
+	return f.marshal(v, out)
+}
+
 func (f *Format) stdin() io.Reader {
 	if f.Stdin != nil {
 		return f.Stdin
@@ -181,6 +196,10 @@ func (f *Format) write(p []byte, file string) error {
 	}
 }
 
+func merge(vorig, vmixin interface{}) (interface{}, error) {
+	return nil, nil // todo
+}
+
 func jsonMarshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -192,4 +211,5 @@ func jsonMarshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func Refmt(in, out string) error { return f.Refmt(in, out) }
+func Refmt(in, out string) error          { return f.Refmt(in, out) }
+func Merge(orig, mixin, out string) error { return f.Merge(orig, mixin, out) }
