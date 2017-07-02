@@ -107,7 +107,9 @@ func (f *Format) Refmt(in, out string) error {
 
 func (f *Format) Merge(orig, mixin, out string) error {
 	vorig, err := f.unmarshal(orig)
-	if err != nil {
+	if fi, e := os.Stat(orig); os.IsNotExist(e) || fi.Size() == 0 {
+		vorig = make(map[string]interface{})
+	} else if err != nil {
 		return err
 	}
 	vmixin, err := f.unmarshal(mixin)

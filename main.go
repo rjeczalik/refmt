@@ -32,6 +32,9 @@ The ORIGINAL_FILE, MIXIN_FILE and OUTPUT_FILE can have different encodings.
 If ORIGINAL_FILE's extension is not recognized or ORIGINAL_FILE is "-" (stdin),
 refmt will try to guess original format.
 
+If ORIGINAL_FILE does not exist or is empty, refmt is going to use empty
+object instead.
+
 If MIXIN_FILE's extension is not recognized or MIXIN_FILE is "-" (stdin),
 refmt will try to guess mixin format.
 
