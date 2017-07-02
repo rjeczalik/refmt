@@ -22,7 +22,7 @@ refmt will try to guess input format.
 If OUTPUT_FILE is "-" (stdout), destination format type is required to be
 passed with -t flag.
 
-	refmt merge [-t type] ORIGINAL_FILE|"-" MIXIN_FILE|"-" OUTPUT_FILE|"-"
+	refmt [-t type] merge ORIGINAL_FILE|"-" MIXIN_FILE|"-" OUTPUT_FILE|"-"
 
 Merges the object defined in ORIGINAL_FILE with the object from MIXIN_FILE, writing
 the resulting object to the OUTPUT_FILE.
