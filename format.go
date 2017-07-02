@@ -12,9 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/rjeczalik/refmt/object"
+
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/printer"
-	"github.com/koding/koding/go/src/koding/kites/kloud/utils/object"
 	yaml "gopkg.in/yaml.v1"
 )
 
@@ -113,11 +114,18 @@ func (f *Format) Merge(orig, mixin, out string) error {
 	if err != nil {
 		return err
 	}
-	v, err := merge(vorig, vmixin)
-	if err != nil {
+	morig, ok := vorig.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("original object is %T, expected %T", vorig, (map[string]interface{})(nil))
+	}
+	mmixin, ok := vmixin.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("mixin object is %T, expected %T", vmixin, (map[string]interface{})(nil))
+	}
+	if err := object.Merge(mmixin, morig); err != nil {
 		return err
 	}
-	return f.marshal(v, out)
+	return f.marshal(morig, out)
 }
 
 func (f *Format) stdin() io.Reader {
@@ -194,10 +202,6 @@ func (f *Format) write(p []byte, file string) error {
 	default:
 		return ioutil.WriteFile(file, p, 0644)
 	}
-}
-
-func merge(vorig, vmixin interface{}) (interface{}, error) {
-	return nil, nil // todo
 }
 
 func jsonMarshal(v interface{}) ([]byte, error) {
