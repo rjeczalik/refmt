@@ -39,7 +39,11 @@ If MIXIN_FILE's extension is not recognized or MIXIN_FILE is "-" (stdin),
 refmt will try to guess mixin format.
 
 If OUTPUT_FILE is "-" (stdout), destination format type is required to be
-passed with -t flag.`
+passed with -t flag.
+
+	refmt [-t type] set INPUT_FILE key value
+
+`
 
 func die(v ...interface{}) {
 	fmt.Fprintln(os.Stderr, v...)
@@ -55,6 +59,8 @@ func main() {
 
 	var err error
 	switch flag.Arg(0) {
+	case "set":
+		err = Set(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "merge":
 		err = Merge(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	default:

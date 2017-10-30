@@ -130,6 +130,23 @@ func (f *Format) Merge(orig, mixin, out string) error {
 	return f.marshal(morig, out)
 }
 
+func (f *Format) Set(in, key, value string) error {
+	v, err := f.unmarshal(in)
+	if fi, e := os.Stat(in); os.IsNotExist(e) || fi.Size() == 0 {
+		v = make(map[string]interface{})
+	} else if err != nil {
+		return err
+	}
+	vobj, ok := v.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("original object is %T, expected %T", v, (map[string]interface{})(nil))
+	}
+	if err := object.SetFlatKeyValue(vobj, key, value); err != nil {
+		return fmt.Errorf("unable to set %s=%s: %s", key, value, err)
+	}
+	return f.marshal(vobj, in)
+}
+
 func (f *Format) stdin() io.Reader {
 	if f.Stdin != nil {
 		return f.Stdin
@@ -219,3 +236,4 @@ func jsonMarshal(v interface{}) ([]byte, error) {
 
 func Refmt(in, out string) error          { return f.Refmt(in, out) }
 func Merge(orig, mixin, out string) error { return f.Merge(orig, mixin, out) }
+func Set(in, key, value string) error     { return f.Set(in, key, value) }
