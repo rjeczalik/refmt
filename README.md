@@ -46,6 +46,17 @@ If OUTPUT_FILE is "-" (stdout), destination format type is required to be
 passed with -t flag.
 ```
 
+### docker usage
+
+```
+# build the refmt image
+docker build -t refmt .
+
+# convert test.yml to hcl
+cat test.yml | docker run -i --rm refmt -t hcl - -
+```
+
+
 ### examples
 
 ```
