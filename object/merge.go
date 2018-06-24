@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"strings"
 )
 
 // MergeError is returned by Merge function on conflict
@@ -74,6 +75,33 @@ func Merge(in, out map[string]interface{}) error {
 				i.out[k] = in
 			}
 		}
+	}
+
+	return nil
+}
+
+func SetFlatKeyValue(m map[string]interface{}, key, value string) error {
+	keys := strings.Split(key, ".")
+	it := m
+	last := len(keys) - 1
+
+	for _, key := range keys[:last] {
+		switch v := it[key].(type) {
+		case map[string]interface{}:
+			it = v
+		case nil:
+			newV := make(map[string]interface{})
+			it[key] = newV
+			it = newV
+		default:
+			return fmt.Errorf("key is not an object")
+		}
+	}
+
+	if value == "" {
+		delete(it, keys[last])
+	} else {
+		it[keys[last]] = value
 	}
 
 	return nil
