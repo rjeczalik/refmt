@@ -53,7 +53,7 @@ func die(v ...interface{}) {
 func main() {
 	flag.Parse()
 
-	if flag.NArg() != 2 && flag.NArg() != 4 {
+	if flag.NArg() != 1 && flag.NArg() != 2 && flag.NArg() != 4 {
 		die(usage)
 	}
 
@@ -63,6 +63,8 @@ func main() {
 		err = Set(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "merge":
 		err = Merge(flag.Arg(1), flag.Arg(2), flag.Arg(3))
+	case "dsn":
+		err = DSN(flag.Arg(1))
 	default:
 		err = Refmt(flag.Arg(0), flag.Arg(1))
 	}

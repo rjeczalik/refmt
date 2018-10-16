@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/rjeczalik/refmt/object"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/printer"
 	yaml "gopkg.in/yaml.v1"
@@ -130,6 +132,51 @@ func (f *Format) Merge(orig, mixin, out string) error {
 	return f.marshal(morig, out)
 }
 
+func (f *Format) DSN(dsn string) error {
+	if dsn == "" {
+		p, err := f.read("-")
+		if err != nil {
+			return err
+		}
+		dsn = string(bytes.TrimSpace(p))
+	}
+	c, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return err
+	}
+	// --user=root --password=101202 --port=5506 --host=127.0.0.1 --database=scylla_dbaas
+	var buf bytes.Buffer
+	if c.User != "" {
+		buf.WriteString("--user=")
+		buf.WriteString(c.User)
+		buf.WriteRune(' ')
+	}
+	if c.Passwd != "" {
+		buf.WriteString("--password=")
+		buf.WriteString(c.Passwd)
+		buf.WriteRune(' ')
+	}
+	if c.Addr != "" {
+		if host, port, err := net.SplitHostPort(c.Addr); err == nil {
+			buf.WriteString("--host=")
+			buf.WriteString(host)
+			buf.WriteString(" --port=")
+			buf.WriteString(port)
+		} else {
+			buf.WriteString("--host=")
+			buf.WriteString(c.Addr)
+		}
+		buf.WriteRune(' ')
+	}
+	if c.DBName != "" {
+		buf.WriteString("--database=")
+		buf.WriteString(c.DBName)
+		buf.WriteRune(' ')
+	}
+	buf.WriteRune('\n')
+	return f.write(buf.Bytes(), "-")
+}
+
 func (f *Format) Set(in, key, value string) error {
 	v, err := f.unmarshal(in)
 	if fi, e := os.Stat(in); os.IsNotExist(e) || fi.Size() == 0 {
@@ -236,4 +283,5 @@ func jsonMarshal(v interface{}) ([]byte, error) {
 
 func Refmt(in, out string) error          { return f.Refmt(in, out) }
 func Merge(orig, mixin, out string) error { return f.Merge(orig, mixin, out) }
+func DSN(dsn string) error                { return f.DSN(dsn) }
 func Set(in, key, value string) error     { return f.Set(in, key, value) }
