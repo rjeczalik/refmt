@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -12,12 +11,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/rjeczalik/refmt/object"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/hcl"
 	"github.com/hashicorp/hcl/hcl/printer"
+	"github.com/pkg/errors"
+	"github.com/savaki/jq"
 	yaml "gopkg.in/yaml.v1"
 )
 
@@ -83,6 +85,8 @@ func typ(file string) string {
 		return "yaml"
 	case "tf":
 		return "hcl"
+	case "tfstate":
+		return "json"
 	case "json", "yaml", "hcl":
 		return ext
 	default:
@@ -194,6 +198,48 @@ func (f *Format) Set(in, key, value string) error {
 	return f.marshal(vobj, in)
 }
 
+var funcs = map[string]interface{}{
+	"jq": func(expr string, v interface{}) (interface{}, error) {
+		op, err := jq.Parse(expr)
+		if err != nil {
+			return nil, errors.Wrap(err, "jq.Parse")
+		}
+		p, err := json.Marshal(v)
+		if err != nil {
+			return nil, errors.Wrap(err, "json.Marshal")
+		}
+		q, err := op.Apply(p)
+		if err != nil {
+			return nil, errors.Wrap(err, "op.Apply")
+		}
+		var vv interface{}
+		if err := json.Unmarshal(q, &vv); err != nil {
+			return nil, errors.Wrap(err, "json.Unmarshal")
+		}
+		return vv, nil
+	},
+}
+
+func (f *Format) Template(tmpl, data, out string) error {
+	p, err := f.read(tmpl)
+	if err != nil {
+		return err
+	}
+	t, err := template.New("").Funcs(funcs).Parse(string(p))
+	if err != nil {
+		return err
+	}
+	vdata, err := f.unmarshal(data)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, vdata); err != nil {
+		return err
+	}
+	return f.write(buf.Bytes(), out)
+}
+
 func (f *Format) stdin() io.Reader {
 	if f.Stdin != nil {
 		return f.Stdin
@@ -281,7 +327,8 @@ func jsonMarshal(v interface{}) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func Refmt(in, out string) error          { return f.Refmt(in, out) }
-func Merge(orig, mixin, out string) error { return f.Merge(orig, mixin, out) }
-func DSN(dsn string) error                { return f.DSN(dsn) }
-func Set(in, key, value string) error     { return f.Set(in, key, value) }
+func Refmt(in, out string) error            { return f.Refmt(in, out) }
+func Merge(orig, mixin, out string) error   { return f.Merge(orig, mixin, out) }
+func DSN(dsn string) error                  { return f.DSN(dsn) }
+func Set(in, key, value string) error       { return f.Set(in, key, value) }
+func Template(tmpl, data, out string) error { return f.Template(tmpl, data, out) }

@@ -65,6 +65,8 @@ func main() {
 		err = Merge(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	case "dsn":
 		err = DSN(flag.Arg(1))
+	case "template":
+		err = Template(flag.Arg(1), flag.Arg(2), flag.Arg(3))
 	default:
 		err = Refmt(flag.Arg(0), flag.Arg(1))
 	}
