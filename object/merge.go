@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -80,6 +81,64 @@ func Merge(in, out map[string]interface{}) error {
 	return nil
 }
 
+func Flatten(in map[string]interface{}, sep string) map[string]interface{} {
+	if len(in) == 0 {
+		return nil
+	}
+
+	root := make(map[string]interface{})
+
+	type elm struct {
+		parent map[string]interface{}
+		key    []string
+		left   []string
+	}
+
+	var (
+		it    elm
+		k     string
+		queue = []elm{{parent: in, left: Keys(in)}}
+	)
+
+	for len(queue) != 0 {
+		it, queue = queue[len(queue)-1], queue[:len(queue)-1]
+		k, it.left = it.left[0], it.left[1:]
+
+		key := clone(it.key, k)
+
+		if len(it.left) != 0 {
+			queue = append(queue, it)
+		}
+
+		switch v := it.parent[k].(type) {
+		case []interface{}:
+			m := make(map[string]interface{}, len(v))
+
+			for i, v := range v {
+				m[fmt.Sprint(i)] = v
+			}
+
+			queue = append(queue, elm{
+				parent: m,
+				key:    key,
+				left:   Keys(m),
+			})
+		case map[string]interface{}:
+			queue = append(queue, elm{
+				parent: v,
+				key:    key,
+				left:   Keys(v),
+			})
+		default:
+			if len(key) != 0 {
+				root[strings.Join(key, sep)] = v
+			}
+		}
+	}
+
+	return root
+}
+
 func SetFlatKeyValue(m map[string]interface{}, key, value string) error {
 	keys := strings.Split(key, ".")
 	it := m
@@ -105,4 +164,29 @@ func SetFlatKeyValue(m map[string]interface{}, key, value string) error {
 	}
 
 	return nil
+}
+
+func clone(s []string, vs ...string) []string {
+	sCopy := make([]string, len(s), len(s)+len(vs))
+	copy(sCopy, s)
+
+	for _, v := range vs {
+		if v != "" && v != "-" {
+			sCopy = append(sCopy, v)
+		}
+	}
+
+	return sCopy
+}
+
+func Keys(in map[string]interface{}) []string {
+	keys := make([]string, 0, len(in))
+
+	for k := range in {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
 }

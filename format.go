@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/rjeczalik/refmt/object"
+	"rafal.dev/refmt/object"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/hashicorp/hcl"
@@ -27,10 +27,48 @@ var f = &Format{
 	Type: flag.String("t", "", "Output format type."),
 }
 
-var m = map[string]struct {
+type envCodec struct {
+	prefix *string
+}
+
+func (c *envCodec) codec() codec {
+	return codec{
+		marshal:   c.marshal,
+		unmarshal: c.unmarshal,
+	}
+}
+
+func (c *envCodec) marshal(v interface{}) ([]byte, error) {
+	m, ok := v.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("envCoded: cannot marshal non-object value")
+	}
+
+	envs := object.Flatten(m, "_")
+
+	var (
+		p    = *c.prefix
+		keys = object.Keys(envs)
+		buf  bytes.Buffer
+	)
+
+	for _, k := range keys {
+		fmt.Fprintf(&buf, "%s%s=%v\n", p, strings.ToUpper(k), envs[k])
+	}
+
+	return buf.Bytes(), nil
+}
+
+func (c *envCodec) unmarshal([]byte) (interface{}, error) {
+	return nil, errors.New("envCodec: not implemented")
+}
+
+type codec struct {
 	marshal   func(interface{}) ([]byte, error)
 	unmarshal func([]byte) (interface{}, error)
-}{
+}
+
+var m = map[string]codec{
 	"json": {
 		marshal: jsonMarshal,
 		unmarshal: func(p []byte) (v interface{}, _ error) {
@@ -73,6 +111,9 @@ var m = map[string]struct {
 			return v, nil
 		},
 	},
+	"env": (&envCodec{
+		prefix: flag.String("p", "", "Prefix for keys when type is env."),
+	}).codec(),
 }
 
 func typ(file string) string {
@@ -94,7 +135,7 @@ func typ(file string) string {
 	}
 }
 
-var autoTryOrder = []string{"hcl", "json", "yaml"}
+var autoTryOrder = []string{"hcl", "json", "yaml", "env"}
 
 type Format struct {
 	Type   *string   // autodetect if nil or empty
