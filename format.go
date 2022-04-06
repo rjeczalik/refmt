@@ -68,16 +68,36 @@ type codec struct {
 	unmarshal func([]byte) (interface{}, error)
 }
 
+type jsonCodec struct {
+	compact *bool
+}
+
+func (c *jsonCodec) codec() codec {
+	return codec{
+		marshal:   c.marshal,
+		unmarshal: c.unmarshal,
+	}
+}
+
+func (c *jsonCodec) marshal(v interface{}) ([]byte, error) {
+	if *c.compact {
+		return json.Marshal(v)
+	}
+
+	return jsonMarshal(v)
+}
+
+func (c *jsonCodec) unmarshal(p []byte) (v interface{}, _ error) {
+	if err := json.Unmarshal(p, &v); err != nil {
+		return nil, err
+	}
+	return v, nil
+}
+
 var m = map[string]codec{
-	"json": {
-		marshal: jsonMarshal,
-		unmarshal: func(p []byte) (v interface{}, _ error) {
-			if err := json.Unmarshal(p, &v); err != nil {
-				return nil, err
-			}
-			return v, nil
-		},
-	},
+	"json": (&jsonCodec{
+		compact: flag.Bool("c", false, "One-line output for JSON format."),
+	}).codec(),
 	"yaml": {
 		marshal: yaml.Marshal,
 		unmarshal: func(p []byte) (v interface{}, _ error) {
