@@ -53,7 +53,7 @@ func (c *envCodec) marshal(v interface{}) ([]byte, error) {
 	)
 
 	for _, k := range keys {
-		fmt.Fprintf(&buf, "%s%s=%v\n", p, strings.ToUpper(k), envs[k])
+		fmt.Fprintf(&buf, "%s%s=%q\n", p, strings.ToUpper(k), envs[k])
 	}
 
 	return buf.Bytes(), nil
