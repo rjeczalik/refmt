@@ -107,6 +107,8 @@ func (c *envCodec) marshal(v interface{}) ([]byte, error) {
 		return nil, errors.New("envCoded: cannot marshal non-object value")
 	}
 
+	object.Walk(m, transform(true))
+
 	var (
 		p    = *c.prefix
 		envs = object.Flatten(m, "_")
@@ -114,12 +116,8 @@ func (c *envCodec) marshal(v interface{}) ([]byte, error) {
 		buf  bytes.Buffer
 	)
 
-	for _, key := range keys {
-		v := envs[key]
-		k, opts := parseOptions(key)
-		v = executeOptions(v, opts, true)
-
-		fmt.Fprintf(&buf, "%s%s=%s\n", p, strings.ToUpper(k), v)
+	for _, k := range keys {
+		fmt.Fprintf(&buf, "%s%s=%s\n", p, strings.ToUpper(k), envs[k])
 	}
 
 	return buf.Bytes(), nil
