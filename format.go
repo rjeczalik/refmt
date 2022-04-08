@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -38,26 +39,85 @@ func (c *envCodec) codec() codec {
 	}
 }
 
+type Options map[string]string
+
+func parseOptions(key string) (string, Options) {
+	opts := make(Options)
+
+	for i, j := 0, 0; ; {
+		if i = strings.IndexByte(key, '['); j == -1 {
+			break
+		}
+
+		if j = strings.IndexByte(key, ']'); i == -1 {
+			break
+		}
+
+		k, v := key[i+1:j], ""
+
+		if l := strings.IndexByte(k, '='); l != -1 {
+			k, v = k[:l], v[l+1:]
+		}
+
+		opts[k] = v
+
+		key = key[:i] + key[j+1:]
+	}
+
+	return key, opts
+}
+
+func executeOptions(v interface{}, opts Options, marshal bool) interface{} {
+	if _, ok := opts["b64"]; ok {
+		if s, ok := v.(string); ok {
+			if marshal {
+				if _, err := base64.StdEncoding.DecodeString(s); err == nil {
+					return s
+				}
+
+				return base64.StdEncoding.EncodeToString([]byte(s))
+			}
+
+			if p, err := base64.StdEncoding.DecodeString(s); err == nil {
+				return string(p)
+			}
+
+			return s
+		}
+	}
+
+	return v
+}
+
+func transform(marshal bool) func(map[string]interface{}, string) {
+	return func(m map[string]interface{}, key string) {
+		v := m[key]
+
+		k, opts := parseOptions(key)
+		v = executeOptions(v, opts, marshal)
+
+		delete(m, key)
+		m[k] = v
+	}
+}
+
 func (c *envCodec) marshal(v interface{}) ([]byte, error) {
 	m, ok := v.(map[string]interface{})
 	if !ok {
 		return nil, errors.New("envCoded: cannot marshal non-object value")
 	}
 
-	envs := object.Flatten(m, "_")
-
 	var (
 		p    = *c.prefix
+		envs = object.Flatten(m, "_")
 		keys = object.Keys(envs)
 		buf  bytes.Buffer
 	)
 
-	for _, k := range keys {
-		v := fmt.Sprintf("%q", envs[k])
-
-		if _, ok := envs[k].(string); ok {
-			v = strings.Trim(v, `"`)
-		}
+	for _, key := range keys {
+		v := envs[key]
+		k, opts := parseOptions(key)
+		v = executeOptions(v, opts, true)
 
 		fmt.Fprintf(&buf, "%s%s=%s\n", p, strings.ToUpper(k), v)
 	}
@@ -76,6 +136,7 @@ type codec struct {
 
 type jsonCodec struct {
 	compact *bool
+	b64     *bool
 }
 
 func (c *jsonCodec) codec() codec {
@@ -86,6 +147,10 @@ func (c *jsonCodec) codec() codec {
 }
 
 func (c *jsonCodec) marshal(v interface{}) ([]byte, error) {
+	if m, ok := v.(map[string]interface{}); ok {
+		object.Walk(m, transform(true))
+	}
+
 	if *c.compact {
 		return json.Marshal(v)
 	}
@@ -97,24 +162,46 @@ func (c *jsonCodec) unmarshal(p []byte) (v interface{}, _ error) {
 	if err := json.Unmarshal(p, &v); err != nil {
 		return nil, err
 	}
+	if m, ok := v.(map[string]interface{}); ok {
+		object.Walk(m, transform(false))
+	}
 	return v, nil
+}
+
+type yamlCodec struct{}
+
+func (c *yamlCodec) codec() codec {
+	return codec{
+		marshal:   c.marshal,
+		unmarshal: c.unmarshal,
+	}
+}
+
+func (c *yamlCodec) marshal(v interface{}) ([]byte, error) {
+	if m, ok := v.(map[string]interface{}); ok {
+		object.Walk(m, transform(true))
+	}
+	return yaml.Marshal(v)
+}
+
+func (c *yamlCodec) unmarshal(p []byte) (v interface{}, _ error) {
+	if err := yaml.Unmarshal(p, &v); err != nil {
+		return nil, err
+	}
+
+	return object.FixYAML(v), nil
 }
 
 var m = map[string]codec{
 	"json": (&jsonCodec{
 		compact: flag.Bool("c", false, "One-line output for JSON format."),
 	}).codec(),
-	"yaml": {
-		marshal: yaml.Marshal,
-		unmarshal: func(p []byte) (v interface{}, _ error) {
-			if err := yaml.Unmarshal(p, &v); err != nil {
-				return nil, err
-			}
-			return object.FixYAML(v), nil
-		},
-	},
+	"yaml": new(yamlCodec).codec(),
 	"hcl": {
 		marshal: func(v interface{}) ([]byte, error) {
+			if m, ok := v.(map[string]interface{}); ok {
+				object.Walk(m, transform(true))
+			}
 			p, err := jsonMarshal(v)
 			if err != nil {
 				return nil, err
@@ -134,6 +221,9 @@ var m = map[string]codec{
 				return nil, err
 			}
 			object.FixHCL(v)
+			if m, ok := v.(map[string]interface{}); ok {
+				object.Walk(m, transform(false))
+			}
 			return v, nil
 		},
 	},
@@ -332,6 +422,9 @@ func (f *Format) unmarshal(file string) (v interface{}, err error) {
 	p, err := f.read(file)
 	if err != nil {
 		return nil, err
+	}
+	if q, err := base64.StdEncoding.DecodeString(string(p)); err == nil {
+		p = q
 	}
 	if t := typ(file); t != "" {
 		return m[t].unmarshal(p)
